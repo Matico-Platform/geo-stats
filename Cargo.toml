@@ -7,7 +7,13 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-geo = "0.14.0"
-geo-types = "0.6.0"
+geo = "0.23.0"
+geo-types = "0.7.7"
 num-traits = "0.2.12"
 serde = { version = "1.0", features = ["derive"] }
+geojson = {version="*", featuers =["geo-types"]}
+
+
+# polars = { git = "https://github.com/stuartlynn/polars.git", branch = 'wasm_rebase', default-features = false, features = ["ipc"] }
+# geopolars = { git = "https://github.com/stuartlynn/geopolars.git", branch = "wasm_test" }
+
