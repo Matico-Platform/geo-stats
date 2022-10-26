@@ -1,8 +1,8 @@
-use geo_weights::{RookWeights, Weights};
+use geo_weights::{RookWeights, WeightBuilder};
 use geo_types::{polygon, Geometry};
 #[test]
 fn we_should_get_the_correct_weights() {
-    let mut weights: RookWeights<usize, f64> = RookWeights::new(10000.0);
+    let weight_builder = RookWeights::new(10000.0);
     let points: Vec<Geometry<f64>> = vec![
         polygon![
             (x: 1.0, y:1.0),
@@ -34,9 +34,8 @@ fn we_should_get_the_correct_weights() {
         .into(),
     ];
 
-    let ids: Vec<usize> = vec![0, 1, 2, 3];
 
-    weights.compute_weights(&points, &ids);
+    let weights = weight_builder.compute_weights(&points);
     let n1 = weights.get_neighbor_ids(0).unwrap();
     let n2 = weights.get_neighbor_ids(1).unwrap();
     let n3 = weights.get_neighbor_ids(2).unwrap();

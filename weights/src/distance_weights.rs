@@ -1,47 +1,38 @@
-use crate::weights::Weights;
+use crate::{weights::Weights, WeightBuilder};
 use geo::centroid::Centroid;
 use geo::euclidean_distance::EuclideanDistance;
 use geo::GeoFloat;
 use geo_types::{Geometry, Point};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::hash::Hash;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DistanceWeights<T, A>
+pub struct DistanceWeights<A>
 where
-    T: Hash + Eq + Clone + std::fmt::Display,
     A: GeoFloat,
 {
     cutoff_dist: Option<A>,
     use_distance_as_weight: bool,
-    weights: Option<HashMap<T, HashMap<T, f64>>>,
 }
 
-impl<T, A> DistanceWeights<T, A>
+impl<A> DistanceWeights<A>
 where
-    T: Hash + Eq + Clone + std::fmt::Display,
     A: GeoFloat,
 {
     pub fn new(cutoff_dist: Option<A>, use_distance_as_weight: bool) -> Self {
         Self {
             cutoff_dist,
             use_distance_as_weight,
-            weights: None,
         }
     }
 }
 
-impl<T, A> Weights<T, A> for DistanceWeights<T, A>
+impl<A> WeightBuilder<A> for DistanceWeights<A>
 where
-    T: Hash + Eq + Clone + std::fmt::Display,
     A: GeoFloat,
 {
-    fn weights(&self) -> Option<&HashMap<T, HashMap<T, f64>>> {
-        self.weights.as_ref()
-    }
 
-    fn compute_weights(&mut self, geoms: &[Geometry<A>], ids: &[T]) {
+    fn compute_weights(&self, geoms: &[Geometry<A>])->Weights {
         let centroids: Vec<Point<A>> = geoms
             .iter()
             .map(|geom| match geom {
@@ -55,7 +46,7 @@ where
                 _ => panic!("Geometry not supported"),
             })
             .collect();
-        let mut weights: HashMap<T, HashMap<T, f64>> = HashMap::new();
+        let mut weights: HashMap<usize, HashMap<usize, f64>> = HashMap::new();
 
         for i in 0..centroids.len() {
             for j in 0..centroids.len() {
@@ -83,14 +74,14 @@ where
                 };
                 if let Some(w) = weight {
                     weights
-                        .entry(ids[i].clone())
+                        .entry(i)
                         .or_insert_with(HashMap::new)
-                        .entry(ids[j].clone())
+                        .entry(j)
                         .or_insert_with(|| w.to_f64().unwrap());
                 }
             }
         }
 
-        self.weights = Some(weights)
+        Weights::new(weights, geoms.len(), HashSet::new())
     }
 }

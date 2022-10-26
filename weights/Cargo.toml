@@ -11,9 +11,9 @@ geo = "0.23.0"
 geo-types = "0.7.7"
 num-traits = "0.2.12"
 serde = { version = "1.0", features = ["derive"] }
-geojson = {version="*", featuers =["geo-types"]}
-
+geojson = { version = "0.24.0", featuers = ["geo-types"] }
+nalgebra-sparse = "0.7.1"
+nalgebra = "0.31.2"
 
 # polars = { git = "https://github.com/stuartlynn/polars.git", branch = 'wasm_rebase', default-features = false, features = ["ipc"] }
 # geopolars = { git = "https://github.com/stuartlynn/geopolars.git", branch = "wasm_test" }
-
