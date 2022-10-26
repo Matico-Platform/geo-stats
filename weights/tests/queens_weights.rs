@@ -1,16 +1,15 @@
 mod test_data;
 
 use geo_types::{polygon, Geometry};
-use geo_weights::{QueensWeights, Weights};
+use geo_weights::{QueensWeights, WeightBuilder};
 use test_data::tracts;
 
 #[test]
 fn queens_real_world_test() {
     let tracts = tracts();
-    let mut weights = QueensWeights::new(100000.0);
-    let ids: Vec<usize> = (0..tracts.len()).collect();
+    let weight_builder = QueensWeights::new(100000.0);
 
-    weights.compute_weights(&tracts, &ids);
+    let weights = weight_builder.compute_weights(&tracts);
 
     let _weights_for_1 = weights.get_neighbor_ids(1).unwrap();
     let _weights_for_2 = weights.get_neighbor_ids(2).unwrap();
@@ -20,7 +19,7 @@ fn queens_real_world_test() {
 
 #[test]
 fn queens_we_should_get_the_correct_weights() {
-    let mut weights: QueensWeights<usize, f64> = QueensWeights::new(10000.0);
+    let weight_builder = QueensWeights::new(10000.0);
     tracts();
     let points: Vec<Geometry<f64>> = vec![
         polygon![
@@ -53,9 +52,8 @@ fn queens_we_should_get_the_correct_weights() {
         .into(),
     ];
 
-    let ids: Vec<usize> = vec![0, 1, 2, 3];
 
-    weights.compute_weights(&points, &ids);
+    let weights = weight_builder.compute_weights(&points);
     let n1 = weights.get_neighbor_ids(0).unwrap();
     let n2 = weights.get_neighbor_ids(1).unwrap();
     let n3 = weights.get_neighbor_ids(2).unwrap();

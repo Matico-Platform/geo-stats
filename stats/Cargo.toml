@@ -1,0 +1,21 @@
+[package]
+name = "geo-stats"
+version = "0.1.0"
+authors = ["Stuart Lynn <stuart.lynn@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+geo = "0.23.0"
+geo-types = "0.7.7"
+num-traits = "0.2.12"
+serde = { version = "1.0", features = ["derive"] }
+geojson = { version = "*", featuers = ["geo-types"] }
+geo-weights = { path = "../weights" }
+nalgebra = "0.31.2"
+nalgebra-sparse = "0.7.1"
+rand = "0.8.5"
+approx = "0.5.1"
+serde_json = "1.0.87"
+rayon = "1.5"
