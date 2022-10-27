@@ -33,9 +33,9 @@ pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: b
         .iter()
         .zip(lags.iter())
         .map(|(a, b)| match (a, b) {
-            (a, b) if *a > 0.0 && *b > 0.0 => Quad::HH,
-            (a, b) if *a > 0.0 && *b < 0.0 => Quad::HL,
-            (a, b) if *a < 0.0 && *b > 0.0 => Quad::LH,
+            (a, b) if *a >= 0.0 && *b >= 0.0 => Quad::HH,
+            (a, b) if *a >= 0.0 && *b < 0.0 => Quad::HL,
+            (a, b) if *a < 0.0 && *b >= 0.0 => Quad::LH,
             (a, b) if *a < 0.0 && *b < 0.0 => Quad::LL,
             (_, _) => unreachable!(),
         })
