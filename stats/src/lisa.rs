@@ -1,6 +1,6 @@
 use geo_weights::weights::{TransformType, Weights};
 use nalgebra::DVector;
-use rand::seq::SliceRandom;
+use rand::seq::{SliceRandom, IteratorRandom, index::sample};
 use rayon::prelude::*;
 use serde::Serialize;
 
@@ -13,6 +13,12 @@ pub struct LISAResult {
 }
 
 #[derive(Debug, Serialize)]
+pub enum PermutationMethod{
+    FULL,
+    LOOKUP
+}
+
+#[derive(Debug, Serialize)]
 pub enum Quad {
     HH,
     HL,
@@ -20,8 +26,23 @@ pub enum Quad {
     LL,
 }
 
-pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: bool) -> LISAResult {
+pub fn generate_perturbation_lookups( max_no_neighbors: usize, permutations:usize, no_observations: usize)-> Vec<Vec<Vec<usize>>>{
+    let lookup: Vec<Vec<Vec<usize>>> = (0..max_no_neighbors+1).into_par_iter().map(|no_neighbors|{
+        let mut rng = rand::thread_rng();
+        let inner_lookup: Vec<Vec<usize>> = (0..permutations).map(|_|{
+            let sample = sample(&mut rng, no_observations-1, no_neighbors).into_vec();
+            sample
+        }).collect();
+        inner_lookup
+    }).collect();
+    println!("Lookup dim 1: {} 2: {} 3: {} observations {}", lookup.len(), lookup[0].len(), lookup[0][0].len(), no_observations);
+    lookup
+}
+
+
+pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: bool, permutation_method: PermutationMethod) -> LISAResult {
     let x = DVector::from_column_slice(values);
+    let no_observations = x.len();
 
     let mean = x.mean();
     let std = x.variance().sqrt();
@@ -46,6 +67,14 @@ pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: b
     results *= norm;
 
     let no_neighbors: Vec<usize> = w_matrix.row_iter().map(|row| row.values().len()).collect();
+    let max_neighbors = no_neighbors.iter().max();
+
+    let permutation_lookup = match permutation_method{
+        PermutationMethod::LOOKUP => Some(generate_perturbation_lookups(*max_neighbors.unwrap(), permutations, no_observations )),
+        PermutationMethod::FULL =>None
+    } ;
+
+    
     let sim_results: Vec<(f64, Vec<f64>)> = results
         .data
         .as_vec()
@@ -53,20 +82,30 @@ pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: b
         .zip(no_neighbors)
         .enumerate()
         .map(|(index, (moran, values_to_sample))| {
-            let mut rng = rand::thread_rng();
             let collapsed_weights: Vec<f64> = w_matrix.row(index).values().into();
             let self_value: f64 = *x_z.get(index).unwrap();
             let mut values_with_self_removed: Vec<f64> = x_z.iter().map(|v| *v).collect();
             values_with_self_removed.remove(index);
+            let mut rng = rand::thread_rng();
 
             // let collapsed_weights = DVector::from_vec(collapsed_weights);
             let sim_vals: Vec<f64> = (0..permutations)
-                .map(|_| {
-                    values_with_self_removed
-                        .choose_multiple(&mut rng, values_to_sample)
-                        .zip(&collapsed_weights)
-                        .map(|(val, weight)| val * weight)
-                        .sum()
+                .map(|permutation| {
+
+                    let sim_moran = match &permutation_lookup{
+                        None=> sample(&mut rng, no_observations-1, values_to_sample).into_iter()
+                               .map(|i| values_with_self_removed[i] )
+                               .zip(&collapsed_weights)
+                               .map(|(val, weight)| val * weight)
+                               .sum(),
+
+                        Some(lookup)=> lookup[values_to_sample][permutation].iter()
+                               .map(|i| values_with_self_removed[*i] )
+                               .zip(&collapsed_weights)
+                               .map(|(val, weight)| val * weight)
+                               .sum()
+                    };
+                    sim_moran
                 })
                 .map(|v: f64| v * self_value * norm)
                 .collect();
@@ -120,7 +159,7 @@ mod tests {
                 .collect();
 
             b.iter(|| {
-                lisa(&weights, &values, 9999, false);
+                lisa(&weights, &values, 9999, false, PermutationMethod::LOOKUP);
             })
         } else {
             panic!("Expected data to be a feature collection")
@@ -148,7 +187,7 @@ mod tests {
                 .collect();
 
             b.iter(|| {
-                lisa(&weights, &values, 999, false);
+                lisa(&weights, &values, 9999, false, PermutationMethod::LOOKUP);
             })
         } else {
             panic!("Expected data to be a feature collection")
