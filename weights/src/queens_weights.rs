@@ -1,5 +1,5 @@
-use crate::{utils::coords_to_tolerance, WeightBuilder};
 use crate::weights::Weights;
+use crate::{utils::coords_to_tolerance, WeightBuilder};
 use geo::algorithm::coords_iter::CoordsIter;
 use geo::GeoFloat;
 use geo_types::Geometry;
@@ -19,9 +19,7 @@ where
     A: GeoFloat,
 {
     pub fn new(tolerance: A) -> Self {
-        Self {
-            tolerance
-        }
+        Self { tolerance }
     }
 }
 
@@ -29,7 +27,7 @@ impl<A> WeightBuilder<A> for QueensWeights<A>
 where
     A: GeoFloat,
 {
-    fn compute_weights(&self,geoms: &[Geometry<A>]) ->Weights{
+    fn compute_weights(&self, geoms: &[Geometry<A>]) -> Weights {
         let mut coord_hash: HashMap<(isize, isize), Vec<usize>> = HashMap::new();
 
         for (index, geom) in geoms.iter().enumerate() {
@@ -58,7 +56,6 @@ where
             }
         }
 
-        Weights::new(weights,geoms.len(), HashSet::new())
+        Weights::new(weights, geoms.len(), HashSet::new())
     }
-
 }

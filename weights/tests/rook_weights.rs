@@ -1,5 +1,5 @@
-use geo_weights::{RookWeights, WeightBuilder};
 use geo_types::{polygon, Geometry};
+use geo_weights::{RookWeights, WeightBuilder};
 #[test]
 fn we_should_get_the_correct_weights() {
     let weight_builder = RookWeights::new(10000.0);
@@ -33,7 +33,6 @@ fn we_should_get_the_correct_weights() {
         ]
         .into(),
     ];
-
 
     let weights = weight_builder.compute_weights(&points);
     let n1 = weights.get_neighbor_ids(0).unwrap();

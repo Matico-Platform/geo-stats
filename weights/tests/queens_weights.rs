@@ -52,7 +52,6 @@ fn queens_we_should_get_the_correct_weights() {
         .into(),
     ];
 
-
     let weights = weight_builder.compute_weights(&points);
     let n1 = weights.get_neighbor_ids(0).unwrap();
     let n2 = weights.get_neighbor_ids(1).unwrap();

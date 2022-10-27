@@ -31,8 +31,7 @@ impl<A> WeightBuilder<A> for DistanceWeights<A>
 where
     A: GeoFloat,
 {
-
-    fn compute_weights(&self, geoms: &[Geometry<A>])->Weights {
+    fn compute_weights(&self, geoms: &[Geometry<A>]) -> Weights {
         let centroids: Vec<Point<A>> = geoms
             .iter()
             .map(|geom| match geom {

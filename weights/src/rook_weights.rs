@@ -1,5 +1,5 @@
-use crate::{utils::coords_to_tolerance, WeightBuilder};
 use crate::weights::Weights;
+use crate::{utils::coords_to_tolerance, WeightBuilder};
 use geo::algorithm::coords_iter::CoordsIter;
 use geo::GeoFloat;
 use geo_types::Geometry;
@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 // A is the type of the weight we are computing
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RookWeights< A>
+pub struct RookWeights<A>
 where
     A: GeoFloat,
 {
@@ -22,9 +22,7 @@ where
     A: GeoFloat,
 {
     pub fn new(tolerance: A) -> Self {
-        Self {
-            tolerance,
-        }
+        Self { tolerance }
     }
 }
 
@@ -32,8 +30,7 @@ impl<A> WeightBuilder<A> for RookWeights<A>
 where
     A: GeoFloat,
 {
-
-    fn compute_weights(&self, geoms: &[Geometry<A>])->Weights {
+    fn compute_weights(&self, geoms: &[Geometry<A>]) -> Weights {
         let mut coord_hash: HashMap<[isize; 4], Vec<usize>> = HashMap::new();
 
         for (index, geom) in geoms.iter().enumerate() {
@@ -69,6 +66,6 @@ where
             }
         }
 
-        Weights::new(weights,geoms.len(), HashSet::new()) 
+        Weights::new(weights, geoms.len(), HashSet::new())
     }
 }
