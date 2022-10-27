@@ -54,15 +54,24 @@ pub fn generate_perturbation_lookups( max_no_neighbors: usize, permutations:usiz
 /// - p_vals: the estimated p_val of each observation 
 /// - sims: the simulated moran values for each observation if keep_sims is specified
 pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: bool, permutation_method: PermutationMethod) -> LISAResult {
+
+    // Generate a vector from the slice of values we are provided 
     let x = DVector::from_column_slice(values);
     let no_observations = x.len();
 
+    // Standardize the vector by dividing by subtracting off the mean and dividing by the standard
+    // deviation. 
     let mean = x.mean();
     let std = x.variance().sqrt();
     let x_z = (&x - DVector::from_element(x.len(), mean)) / std;
+
+    // Get the sparse matrix representation of the weights matrix 
     let w_matrix = weights.as_sparse_matrix(Some(TransformType::Row));
+
+    // Calculate the lags through matrix multiplication
     let lags: DVector<_> = &w_matrix * &x_z;
 
+    // Assign the moran quad to each observation
     let quads: Vec<Quad> = x_z
         .iter()
         .zip(lags.iter())
@@ -75,19 +84,27 @@ pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: b
         })
         .collect();
 
+    // Multiply the input values by the lags and normalize to get the moran value 
     let mut results = x_z.component_mul(&lags);
     let norm = (x_z.len() as f64 - 1.0) / x_z.dot(&x_z);
     results *= norm;
 
+    // Next section runs the simulation to determine the significance of each observation
+    //
+    // First we get the number of neighbors for each observation determined by the no of entries in the 
+    // sparse matrix. we also record the max number of neighbors.
+
     let no_neighbors: Vec<usize> = w_matrix.row_iter().map(|row| row.values().len()).collect();
     let max_neighbors = no_neighbors.iter().max();
 
+    // If the lookup permutations method is specified we generate the lookup table of permutations
+    // to be used in the simulation
     let permutation_lookup = match permutation_method{
         PermutationMethod::LOOKUP => Some(generate_perturbation_lookups(*max_neighbors.unwrap(), permutations, no_observations )),
         PermutationMethod::FULL =>None
     } ;
 
-    
+    // Next we iterate over the moran values of our observations, using multiple threads if they are available.  
     let sim_results: Vec<(f64, Vec<f64>)> = results
         .data
         .as_vec()
@@ -95,23 +112,37 @@ pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: b
         .zip(no_neighbors)
         .enumerate()
         .map(|(index, (moran, values_to_sample))| {
+            // For each observation, because we are randomizing the neighbor observations, we dont
+            // need to known which weight corresponds to which neighbor. So we simply collapse them
+            // to a vector.
             let collapsed_weights: Vec<f64> = w_matrix.row(index).values().into();
+            
+            // We get the value at the current observation. 
             let self_value: f64 = *x_z.get(index).unwrap();
+
+            // Then generate a list of observations with that value removed. I suspect there is a
+            // way to simply mask the value out rather than having to construct this new array
+            // which might be a performance boost in future.
             let mut values_with_self_removed: Vec<f64> = x_z.iter().map(|v| *v).collect();
             values_with_self_removed.remove(index);
+
             let mut rng = rand::thread_rng();
 
-            // let collapsed_weights = DVector::from_vec(collapsed_weights);
+            // For each permutation we calclate the lags and moran value for this observation.
             let sim_vals: Vec<f64> = (0..permutations)
                 .map(|permutation| {
-
+                        
                     let sim_moran = match &permutation_lookup{
+                        // if we haven't generated a permutation lookup we sample from the set of
+                        // observations directly  
                         None=> sample(&mut rng, no_observations-1, values_to_sample).into_iter()
                                .map(|i| values_with_self_removed[i] )
                                .zip(&collapsed_weights)
                                .map(|(val, weight)| val * weight)
                                .sum(),
 
+                        // if we have generated a permutation lookup we will use it to simply
+                        // lookup permuted indices for the correct number of weights
                         Some(lookup)=> lookup[values_to_sample][permutation].iter()
                                .map(|i| values_with_self_removed[*i] )
                                .zip(&collapsed_weights)
@@ -122,12 +153,20 @@ pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: b
                 })
                 .map(|v: f64| v * self_value * norm)
                 .collect();
-            let mut larger = sim_vals.iter().filter(|v| *v > moran).count();
 
+            // Now that we have the moran values for each simulation, we could how many of them are
+            // greater or equal to the moran value for the actual dataset 
+            let mut larger = sim_vals.iter().filter(|v| *v >= moran).count();
+
+            // Because the distribution has two tails, and can either be in the lower tail or the
+            // upper tail, we check to see if most observations are above or bellow the moran value
+            // and switch directions if needed
             if permutations - larger < larger {
                 larger = permutations - larger;
             }
 
+            // Calculate the sudo p value as defined as the fraction  of observations more extream
+            // than the calculated moran value
             let p_val = (larger as f64 + 1.0) / (permutations as f64 + 1.0);
 
             if keep_sims{
