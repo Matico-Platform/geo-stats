@@ -1,50 +1,54 @@
 use geo::{Centroid, GeoFloat, Line};
 use geo_types::Geometry;
 use geojson::{Feature, FeatureCollection};
+use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 
-
-pub enum TransformType{
+pub enum TransformType {
     Row,
     Binary,
     DoublyStandardized,
 }
 
 pub trait WeightBuilder<A>
-where 
-A:GeoFloat{
-    fn compute_weights(&self, geoms: &[Geometry<A>])->Weights;
+where
+    A: GeoFloat,
+{
+    fn compute_weights(&self, geoms: &[Geometry<A>]) -> Weights;
 }
 
 // A is the precision of the Geometry
-pub struct Weights{
+pub struct Weights {
     weights: HashMap<usize, HashMap<usize, f64>>,
     no_elements: usize,
-    islands : HashSet<usize> 
+    islands: HashSet<usize>,
 }
 
-impl fmt::Display for Weights{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>)->fmt::Result{
-        write!(f,"({:#?})",self.weights())
-    } 
+impl fmt::Display for Weights {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({:#?})", self.weights())
+    }
 }
 
-impl Weights{
-    pub fn new(weights: HashMap<usize,HashMap<usize,f64>>, no_elements:usize, islands:HashSet<usize>)->Weights{
-        Self{
+impl Weights {
+    pub fn new(
+        weights: HashMap<usize, HashMap<usize, f64>>,
+        no_elements: usize,
+        islands: HashSet<usize>,
+    ) -> Weights {
+        Self {
             weights,
             no_elements,
-            islands
+            islands,
         }
     }
 
-    pub fn weights(&self)->&HashMap<usize,HashMap<usize,f64>>{
+    pub fn weights(&self) -> &HashMap<usize, HashMap<usize, f64>> {
         &self.weights
     }
 
-    pub fn no_elements(&self)->usize{
+    pub fn no_elements(&self) -> usize {
         self.no_elements
     }
 
@@ -62,16 +66,16 @@ impl Weights{
         }
     }
 
-    pub fn as_sparse_matrix(&self, transform:Option<TransformType>)->CsrMatrix<f64>{
+    pub fn as_sparse_matrix(&self, transform: Option<TransformType>) -> CsrMatrix<f64> {
         let mut coo_matrix = CooMatrix::new(self.no_elements, self.no_elements);
 
-        for (key, vals) in self.weights.iter(){
-            let norm : f64 = match &transform{
+        for (key, vals) in self.weights.iter() {
+            let norm: f64 = match &transform {
                 Some(TransformType::Row) => vals.values().sum(),
-                _ => 1.0
+                _ => 1.0,
             };
-            for (key2,weight) in vals.iter(){
-               coo_matrix.push(*key, *key2,*weight/norm);
+            for (key2, weight) in vals.iter() {
+                coo_matrix.push(*key, *key2, *weight / norm);
             }
         }
 
