@@ -54,23 +54,19 @@ pub fn lisa (weights: &Weights,values: &[f64], permutations: usize, keep_sims: b
 
     let mut rng = rand::thread_rng(); 
 
-    let mut sig_counts = DVector::from_element(x.len(), 0.0); 
-
-    let mut sims: Vec<Vec<f64>> = Vec::with_capacity(values.len());
-    for _i in 0..values.len(){
-        sims.push(Vec::with_capacity(permutations))
-    }
-
     let no_neighbors: Vec<usize> = w_matrix.row_iter().map(|row| row.values().len()).collect();
-    let mut sims :Vec<Vec<f64>> = Vec::with_capacity(values.len());
 
+    let mut sims :Vec<Vec<f64>> = Vec::with_capacity(values.len());
     let mut p_vals :Vec<f64> = Vec::with_capacity(values.len());
+
     results.iter().zip(no_neighbors).enumerate().for_each(|(index,(moran,values_to_sample))|{
 
         let collapsed_weights : Vec<f64> = w_matrix.row(index).values().into(); 
         let self_value: f64= *x_z.get(index).unwrap();
+        
         let mut values_with_self_removed: Vec<f64>= x_z.iter().map(|v| *v).collect();
         values_with_self_removed.remove(index);
+        
 
         // let collapsed_weights = DVector::from_vec(collapsed_weights);
         let sim_vals: Vec<f64> = (0..permutations).map(|_| 
@@ -81,11 +77,11 @@ pub fn lisa (weights: &Weights,values: &[f64], permutations: usize, keep_sims: b
                            ).map(|v: f64| v*self_value*norm).collect();
         // println!("sim vals {:#?}", sim_vals);
         // println!("moran {:#?}", moran);
-        let mut larger = sim_vals.iter().filter(|v| *v > moran).count();
+        let mut larger = sim_vals.iter().filter(|v| *v >= moran).count();
         if permutations - larger < larger{
             larger = permutations - larger  
         }
-        if(keep_sims){
+        if keep_sims{
             sims.push(sim_vals);
         }
 
@@ -147,7 +143,7 @@ mod tests{
             let values: Vec<f64> = fc.features.iter().map(|f| f.property("cases").unwrap().as_f64().unwrap()).collect();
                 
             b.iter(||{
-                lisa(&weights,&values,998, false);
+                lisa(&weights,&values,999, false);
             })
 
         }
