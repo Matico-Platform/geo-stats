@@ -4,7 +4,7 @@ use geo::algorithm::coords_iter::CoordsIter;
 use geo::GeoFloat;
 use geo_types::Geometry;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 // T is the type being used to index our geometries
 // A is the type of the weight we are computing
@@ -62,10 +62,10 @@ where
                             }
                         }
                     })
-                    .or_insert_with(|| HashMap::new());
+                    .or_insert_with(HashMap::new);
             }
         }
 
-        Weights::new(weights, geoms.len(), HashSet::new())
+        Weights::new(weights, geoms.len())
     }
 }

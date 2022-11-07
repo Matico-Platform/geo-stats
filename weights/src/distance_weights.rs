@@ -4,7 +4,7 @@ use geo::euclidean_distance::EuclideanDistance;
 use geo::GeoFloat;
 use geo_types::{Geometry, Point};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DistanceWeights<A>
@@ -81,6 +81,6 @@ where
             }
         }
 
-        Weights::new(weights, geoms.len(), HashSet::new())
+        Weights::new(weights, geoms.len())
     }
 }

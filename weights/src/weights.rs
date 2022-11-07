@@ -2,7 +2,7 @@ use geo::{Centroid, GeoFloat, Line};
 use geo_types::Geometry;
 use geojson::{Feature, FeatureCollection};
 use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt;
 
 pub enum TransformType {
@@ -19,10 +19,10 @@ where
 }
 
 // A is the precision of the Geometry
+#[derive(Debug)]
 pub struct Weights {
     weights: HashMap<usize, HashMap<usize, f64>>,
     no_elements: usize,
-    islands: HashSet<usize>,
 }
 
 impl fmt::Display for Weights {
@@ -35,12 +35,10 @@ impl Weights {
     pub fn new(
         weights: HashMap<usize, HashMap<usize, f64>>,
         no_elements: usize,
-        islands: HashSet<usize>,
     ) -> Weights {
         Self {
             weights,
             no_elements,
-            islands,
         }
     }
 
@@ -79,8 +77,7 @@ impl Weights {
             }
         }
 
-        let csr = CsrMatrix::from(&coo_matrix);
-        csr
+        CsrMatrix::from(&coo_matrix)
     }
 
     pub fn links_geojson<A: GeoFloat>(&self, geoms: &[Geometry<A>]) -> FeatureCollection {

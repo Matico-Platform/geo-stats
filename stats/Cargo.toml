@@ -3,6 +3,11 @@ name = "geo-stats"
 version = "0.1.0"
 authors = ["Stuart Lynn <stuart.lynn@gmail.com>"]
 edition = "2018"
+description = "Calculate various geospatial stastistics in rust and wasm"
+license="MIT"
+repository = "https://github.com/matico-platform/geo-stats"
+keywords = ["geo", "stats"]
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -11,8 +16,8 @@ geo = "0.23.0"
 geo-types = "0.7.7"
 num-traits = "0.2.12"
 serde = { version = "1.0", features = ["derive"] }
-geojson = { version = "*", featuers = ["geo-types"] }
-geo-weights = { path = "../weights" }
+geojson = { version = "0.24.0", featuers = ["geo-types"] }
+geo-weights = { path = "../weights", version="0.1.0" }
 nalgebra = "0.31.2"
 nalgebra-sparse = "0.7.1"
 rand = "0.8.5"
