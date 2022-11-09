@@ -30,10 +30,12 @@ impl<A> WeightBuilder<A> for RookWeights<A>
 where
     A: GeoFloat,
 {
-    fn compute_weights(&self, geoms: &[Geometry<A>]) -> Weights {
+    fn compute_weights<T>(&self, geoms: &T) -> Weights
+    where for<'a> &'a T: IntoIterator<Item=&'a Geometry<A>>
+    {
         let mut coord_hash: HashMap<[isize; 4], Vec<usize>> = HashMap::new();
 
-        for (index, geom) in geoms.iter().enumerate() {
+        for (index, geom) in geoms.into_iter().enumerate() {
             for (prev_coords, next_coords) in geom.coords_iter().zip(geom.coords_iter().skip(1)) {
                 let prev_coords_hashed = coords_to_tolerance(prev_coords, 1000.0);
                 let next_coords_hashed = coords_to_tolerance(next_coords, 1000.0);
@@ -66,6 +68,6 @@ where
             }
         }
 
-        Weights::new(weights, geoms.len())
+        Weights::new(weights, geoms.into_iter().count())
     }
 }

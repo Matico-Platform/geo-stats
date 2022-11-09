@@ -27,10 +27,11 @@ impl<A> WeightBuilder<A> for QueensWeights<A>
 where
     A: GeoFloat,
 {
-    fn compute_weights(&self, geoms: &[Geometry<A>]) -> Weights {
+    fn compute_weights<T>(&self, geoms: &T) -> Weights
+    where for<'a> &'a T: IntoIterator<Item=&'a Geometry<A>>{
         let mut coord_hash: HashMap<(isize, isize), Vec<usize>> = HashMap::new();
 
-        for (index, geom) in geoms.iter().enumerate() {
+        for (index, geom) in geoms.into_iter().enumerate() {
             for coords in geom.coords_iter() {
                 let hashed_coords = coords_to_tolerance(coords, 1000.0);
                 coord_hash
@@ -56,6 +57,6 @@ where
             }
         }
 
-        Weights::new(weights, geoms.len())
+        Weights::new(weights, geoms.into_iter().count())
     }
 }
