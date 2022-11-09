@@ -4,7 +4,7 @@ use geo::algorithm::coords_iter::CoordsIter;
 use geo::GeoFloat;
 use geo_types::Geometry;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct QueensWeights<A>
@@ -44,18 +44,18 @@ where
         for (_coords, values) in coord_hash.iter() {
             for index in values.iter() {
                 weights
-                    .entry(index.clone())
+                    .entry(*index)
                     .and_modify(|entry| {
                         for index2 in values.iter() {
                             if index != index2 {
-                                entry.insert(index2.clone(), 1.0);
+                                entry.insert(*index2, 1.0);
                             }
                         }
                     })
-                    .or_insert_with(|| HashMap::new());
+                    .or_insert_with(HashMap::new);
             }
         }
 
-        Weights::new(weights, geoms.len(), HashSet::new())
+        Weights::new(weights, geoms.len())
     }
 }

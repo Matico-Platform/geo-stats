@@ -37,13 +37,14 @@ pub enum Quad {
 /// number of neighbors that we have in the set. These are used to speed up selection of neighbors
 /// during the simulation phase of lisa generation
 pub fn generate_perturbation_lookups( max_no_neighbors: usize, permutations:usize, no_observations: usize)-> Vec<Vec<Vec<usize>>>{
-    (0..max_no_neighbors+1).into_par_iter().map(|no_neighbors|{
+    cfg_into_iter!((0..max_no_neighbors+1)).map(|no_neighbors|{
         let mut rng = rand::thread_rng();
         (0..permutations).map(|_|{
             sample(&mut rng, no_observations-1, no_neighbors).into_vec()
         }).collect()
     }).collect()
 }
+
 
 
 /// Computes the LISA stats for the given weights and values. Results are a LisaResult object that
@@ -53,7 +54,7 @@ pub fn generate_perturbation_lookups( max_no_neighbors: usize, permutations:usiz
 /// - quads: the moran quad specification for each observation, 
 /// - p_vals: the estimated p_val of each observation 
 /// - sims: the simulated moran values for each observation if keep_sims is specified
-pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: bool, permutation_method: PermutationMethod) -> LISAResult {
+pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: bool, permutation_method: PermutationMethod) -> Result<LISAResult, String> {
 
     // Generate a vector from the slice of values we are provided 
     let x = DVector::from_column_slice(values);
@@ -95,20 +96,19 @@ pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: b
     // sparse matrix. we also record the max number of neighbors.
 
     let no_neighbors: Vec<usize> = w_matrix.row_iter().map(|row| row.values().len()).collect();
-    let max_neighbors = no_neighbors.iter().max();
+    let max_neighbors = no_neighbors.iter().max().ok_or("Failed get get max no neighbors")?;
 
     // If the lookup permutations method is specified we generate the lookup table of permutations
     // to be used in the simulation
     let permutation_lookup = match permutation_method{
-        PermutationMethod::LOOKUP => Some(generate_perturbation_lookups(*max_neighbors.unwrap(), permutations, no_observations )),
+        PermutationMethod::LOOKUP => Some(generate_perturbation_lookups(*max_neighbors, permutations, no_observations )),
         PermutationMethod::FULL =>None
     } ;
 
     // Next we iterate over the moran values of our observations, using multiple threads if they are available.  
-    let sim_results: Vec<(f64, Vec<f64>)> = results
+    let sim_results: Vec<(f64, Vec<f64>)> = cfg_into_iter!(results
         .data
-        .as_vec()
-        .par_iter()
+        .as_vec())
         .zip(no_neighbors)
         .enumerate()
         .map(|(index, (moran, values_to_sample))| {
@@ -118,12 +118,12 @@ pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: b
             let collapsed_weights: Vec<f64> = w_matrix.row(index).values().into();
             
             // We get the value at the current observation. 
-            let self_value: f64 = *x_z.get(index).unwrap();
+            let self_value: f64 = *x_z.get(index).expect(&format!("Failed to get value for index {}", index));
 
             // Then generate a list of observations with that value removed. I suspect there is a
             // way to simply mask the value out rather than having to construct this new array
             // which might be a performance boost in future.
-            let mut values_with_self_removed: Vec<f64> = x_z.iter().map(|v| *v).collect();
+            let mut values_with_self_removed: Vec<f64> = x_z.iter().copied().collect();
             values_with_self_removed.remove(index);
 
             let mut rng = rand::thread_rng();
@@ -178,13 +178,13 @@ pub fn lisa(weights: &Weights, values: &[f64], permutations: usize, keep_sims: b
         })
         .collect();
 
-    LISAResult {
+    Ok(LISAResult {
         moran_val: results.data.into(),
         quads,
         lags: lags.data.into(),
         sims: sim_results.iter().map(|r| r.1.clone()).collect(),
         p_vals: sim_results.iter().map(|r| r.0).collect(),
-    }
+    })
 }
 
 #[cfg(test)]
