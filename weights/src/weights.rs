@@ -15,7 +15,8 @@ pub trait WeightBuilder<A>
 where
     A: GeoFloat,
 {
-    fn compute_weights(&self, geoms: &[Geometry<A>]) -> Weights;
+    fn compute_weights<T>(&self, geoms: &T) -> Weights
+    where for<'a> &'a T: IntoIterator<Item=&'a Geometry<A>>;
 }
 
 // A is the precision of the Geometry
