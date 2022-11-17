@@ -4,6 +4,7 @@ use geojson::{Feature, FeatureCollection};
 use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 use std::collections::{HashMap,HashSet};
 use std::fmt;
+use std::iter::IntoIterator;
 
 pub enum TransformType {
     Row,
@@ -20,7 +21,7 @@ where
 }
 
 /// Structure holding and providing methods to access and query a weights matrix. These are either
-/// loaded from extenal representations or constructed from WeightBuilders.
+/// loaded from external representations or constructed from WeightBuilders.
 #[derive(Debug)]
 pub struct Weights {
     weights: HashMap<usize, HashMap<usize, f64>>,
@@ -64,20 +65,24 @@ impl Weights {
     /// * `no_elements` - The number of elements in the original geometry set (because we want to be
     /// sure of the full length given this is a sparse representation)
     ///
-    pub fn from_list_rep(
-        origins: &Vec<usize>,
-        dests: &Vec<usize>,
-        weights: &Vec<f64>,
+    pub fn from_list_rep<T,W>(
+        origins: &T,
+        dests: &T,
+        weights: &W,
         no_elements: usize
-    ) -> Weights{
+    ) -> Weights
+     where for<'a> &'a T: std::iter::IntoIterator<Item = &'a usize>,
+           for<'a> &'a W : std::iter::IntoIterator<Item = &'a f64>
+    {
         let mut weights_lookup: HashMap<usize,HashMap<usize,f64>>= HashMap::new();
 
-      for (index,origin) in origins.iter().enumerate(){
+      for ((origin,dest),weight) in origins.into_iter().zip(dests.into_iter()).zip(weights.into_iter()){
          let entry = weights_lookup.entry(*origin).or_insert(HashMap::new());
-         entry.insert(dests[index], weights[index]);
+         entry.insert(*dest, *weight);
 
-         let entry = weights_lookup.entry(dests[index]).or_insert(HashMap::new());
-         entry.insert(*origin, weights[index]);
+         let entry = weights_lookup.entry(*dest).or_insert(HashMap::new());
+         entry.insert(*origin, *weight);
+
       }
       Self{
        weights: weights_lookup,
