@@ -1,6 +1,6 @@
 [package]
 name = "geo-weights"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Stuart Lynn <stuart.lynn@gmail.com>"]
 edition = "2018"
 description = "Crate for generating weights matrixes from geospatial data."
