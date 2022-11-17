@@ -2,7 +2,7 @@ use geo::{Centroid, GeoFloat, Line};
 use geo_types::Geometry;
 use geojson::{Feature, FeatureCollection};
 use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
-use std::collections::HashMap;
+use std::collections::{HashMap,HashSet};
 use std::fmt;
 
 pub enum TransformType {
@@ -19,7 +19,8 @@ where
     where for<'a> &'a T: IntoIterator<Item=&'a Geometry<A>>;
 }
 
-// A is the precision of the Geometry
+/// Structure holding and providing methods to access and query a weights matrix. These are either
+/// loaded from extenal representations or constructed from WeightBuilders.
 #[derive(Debug)]
 pub struct Weights {
     weights: HashMap<usize, HashMap<usize, f64>>,
@@ -33,6 +34,15 @@ impl fmt::Display for Weights {
 }
 
 impl Weights {
+    /// Create a new weights object from a hashmap indicating origin and destination ids and
+    /// weights.
+    ///
+    /// # Arguments
+    ///
+    /// * `weights` - A mapping of {origin => dest =>weight}f64
+    /// * `no_elements` - The number of elements in the original geometry set (because we want to be
+    /// sure of the full length given this is a sparse representation)
+    ///
     pub fn new(
         weights: HashMap<usize, HashMap<usize, f64>>,
         no_elements: usize,
@@ -43,28 +53,82 @@ impl Weights {
         }
     }
 
+    /// Create a new weights object from a series of lists representing the origin, destinations
+    /// and weights of the matrix 
+    ///
+    /// # Arguments
+    ///
+    /// * `origins` - A  list of the origin ids
+    /// * `origins` - A  list of the destination ids 
+    /// * `weights` - A  list of the weights 
+    /// * `no_elements` - The number of elements in the original geometry set (because we want to be
+    /// sure of the full length given this is a sparse representation)
+    ///
+    pub fn from_list_rep(
+        origins: &Vec<usize>,
+        dests: &Vec<usize>,
+        weights: &Vec<f64>,
+        no_elements: usize
+    ) -> Weights{
+        let mut weights_lookup: HashMap<usize,HashMap<usize,f64>>= HashMap::new();
+
+      for (index,origin) in origins.iter().enumerate(){
+         let entry = weights_lookup.entry(*origin).or_insert(HashMap::new());
+         entry.insert(dests[index], weights[index]);
+
+         let entry = weights_lookup.entry(dests[index]).or_insert(HashMap::new());
+         entry.insert(*origin, weights[index]);
+      }
+      Self{
+       weights: weights_lookup,
+       no_elements
+      }
+    }
+
+    /// Return a reference to the hash map representation of the weights
     pub fn weights(&self) -> &HashMap<usize, HashMap<usize, f64>> {
         &self.weights
     }
 
+    /// Return the total number of elements in the original geometry set
     pub fn no_elements(&self) -> usize {
         self.no_elements
     }
 
+    /// Returns true if the origin and destination are neighbors 
+    ///
+    /// # Arguments
+    /// 
+    /// * `origin` - the id of the origin geometry
+    /// * `destination` - the id of the destination geometry
+    ///
     pub fn are_neighbors(&self, origin: usize, dest: usize) -> bool {
         self.weights.get(&origin).unwrap().contains_key(&dest)
     }
 
-    pub fn get_neighbor_ids(&self, origin: usize) -> Option<Vec<usize>> {
+    /// Returns the ids of a given geometries neighbors 
+    ///
+    /// # Arguments
+    /// 
+    /// * `origin` - the id of the origin geometry
+    ///
+    pub fn get_neighbor_ids(&self, origin: usize) -> Option<HashSet<usize>> {
         match self.weights.get(&origin) {
             Some(m) => {
-                let results: Vec<usize> = m.keys().into_iter().cloned().collect();
+                let results: HashSet<usize> = m.keys().into_iter().cloned().collect();
                 Some(results)
             }
             None => None,
         }
     }
 
+    /// Returns the weights matrix as a nalgebra sparse matrix 
+    ///
+    /// # Arguments
+    /// 
+    /// * `transfrom` - what transform, if any to apply to the weights matrix as we  transform.
+    /// Only TransformType::Row for row normalized is currently implemented.
+    ///
     pub fn as_sparse_matrix(&self, transform: Option<TransformType>) -> CsrMatrix<f64> {
         let mut coo_matrix = CooMatrix::new(self.no_elements, self.no_elements);
 
@@ -81,6 +145,59 @@ impl Weights {
         CsrMatrix::from(&coo_matrix)
     }
 
+    /// Returns the weights matrix in a list format 
+    ///
+    /// Output format is a tuple of origin ids, dest ids, weight values
+    ///
+    pub fn to_list(&self)->(Vec<usize>, Vec<usize>, Vec<f64>){
+        let mut origin_list: Vec<usize> = vec![];
+        let mut dest_list: Vec<usize>= vec![];
+        let mut weight_list: Vec<f64>= vec![];
+
+        for (origin, dests) in self.weights.iter() {
+            for (dest, weight) in dests.iter() {
+                origin_list.push(*origin);
+                dest_list.push(*dest);
+                weight_list.push(*weight);
+            }
+        }
+        (origin_list,dest_list,weight_list)
+    }
+
+    /// Returns the weights matrix in a list format with geometries 
+    ///
+    /// Output format is a tuple of origin ids, dest ids, weight values, geometry linking origin
+    /// and destination
+    ///
+    /// # Arguments
+    /// 
+    /// * `geoms` - the list of geometries originally used to generate the weights matrix.
+    pub fn to_list_with_geom<A:GeoFloat>(&self, geoms: &[Geometry<A>])->(Vec<usize>, Vec<usize>, Vec<f64>, Vec<Geometry<A>>){
+        let mut origin_list: Vec<usize> = vec![];
+        let mut dest_list: Vec<usize>= vec![];
+        let mut weight_list: Vec<f64>= vec![];
+        let mut geoms: Vec<Geometry<A>> = vec![];
+
+        for (origin, dests) in self.weights.iter() {
+            for (dest, weight) in dests.iter() {
+                origin_list.push(*origin);
+                dest_list.push(*dest);
+                weight_list.push(*weight);
+                let origin_centroid = geoms.get(*origin).unwrap().centroid().unwrap();
+                let dest_centroid = geoms.get(*dest).unwrap().centroid().unwrap();
+                let line: geo::Geometry<A> = geo::Geometry::Line(Line::new(origin_centroid, dest_centroid));
+                geoms.push(line);
+            }
+        }
+        (origin_list,dest_list,weight_list, geoms)
+    }
+
+    /// Returns the weights matrix in a GeoJson format with lines between the origin and
+    /// destinations 
+    ///
+    /// # Arguments
+    /// 
+    /// * `geoms` - the list of geometries originally used to generate the weights matrix.
     pub fn links_geojson<A: GeoFloat>(&self, geoms: &[Geometry<A>]) -> FeatureCollection {
         let mut features: Vec<Feature> = vec![];
 
