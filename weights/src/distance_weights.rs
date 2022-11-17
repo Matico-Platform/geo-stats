@@ -32,7 +32,9 @@ where
     A: GeoFloat,
 {
     fn compute_weights<T>(&self, geoms: &T) -> Weights
-    where for<'a> &'a T: IntoIterator<Item=&'a Geometry<A>>{
+    where
+        for<'a> &'a T: IntoIterator<Item = &'a Geometry<A>>,
+    {
         let centroids: Vec<Point<A>> = geoms
             .into_iter()
             .map(|geom| match geom {

@@ -31,7 +31,8 @@ where
     A: GeoFloat,
 {
     fn compute_weights<T>(&self, geoms: &T) -> Weights
-    where for<'a> &'a T: IntoIterator<Item=&'a Geometry<A>>
+    where
+        for<'a> &'a T: IntoIterator<Item = &'a Geometry<A>>,
     {
         let mut coord_hash: HashMap<[isize; 4], Vec<usize>> = HashMap::new();
 
