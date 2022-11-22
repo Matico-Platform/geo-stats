@@ -3,7 +3,7 @@
 extern crate test;
 
 use geo::{polygon, Geometry, GeometryCollection};
-use geo_stats::lisa::{lisa,PermutationMethod};
+use geo_stats::lisa::{lisa, PermutationMethod};
 use geo_weights::{QueensWeights, WeightBuilder, Weights};
 use geojson::{quick_collection, FeatureCollection, GeoJson};
 use std::collections::{HashMap, HashSet};
@@ -33,7 +33,7 @@ fn lisa_should_produce_correct_values_using_full_permutation() {
     dict.insert(8, HashMap::from([(4, 1.0), (7, 1.0), (9, 1.0)]));
     dict.insert(9, HashMap::from([(5, 1.0), (8, 1.0)]));
 
-    let weights = Weights::new(dict, 10, HashSet::new());
+    let weights = Weights::new(dict, 10);
 
     let moran = lisa(&weights, &values, 9999, true, PermutationMethod::FULL).unwrap();
     let expected: Vec<f64> = vec![
@@ -74,9 +74,9 @@ fn lisa_should_produce_correct_values_using_lookup_permutation() {
     dict.insert(8, HashMap::from([(4, 1.0), (7, 1.0), (9, 1.0)]));
     dict.insert(9, HashMap::from([(5, 1.0), (8, 1.0)]));
 
-    let weights = Weights::new(dict, 10, HashSet::new());
+    let weights = Weights::new(dict, 10);
 
-    let moran = lisa(&weights, &values, 9999, true,PermutationMethod::LOOKUP).unwrap();
+    let moran = lisa(&weights, &values, 9999, true, PermutationMethod::LOOKUP).unwrap();
     let expected: Vec<f64> = vec![
         -0.11409277104439629,
         -0.19940542567754874,
@@ -116,7 +116,7 @@ fn real_data() {
             .map(|f| f.property("Donatns").unwrap().as_f64().unwrap())
             .collect();
 
-        let lisa_results = lisa(&weights, &values, 9999, false,PermutationMethod::LOOKUP).unwrap();
+        let lisa_results = lisa(&weights, &values, 9999, false, PermutationMethod::LOOKUP).unwrap();
         println!("{:#?}, {:#?}", lisa_results.moran_val, lisa_results.p_vals);
         let j = serde_json::to_string(&lisa_results).unwrap();
         let mut file = File::create("results_real.json").unwrap();
@@ -145,13 +145,13 @@ fn real_data_sdh() {
             .iter()
             .map(|f| {
                 let s = f.property("MedianHouseholdIncome").unwrap();
-                println!("s: {:#?}",s.to_string());
+                println!("s: {:#?}", s.to_string());
                 let v = s.to_string().parse::<f64>().unwrap();
                 v
             })
             .collect();
 
-        let lisa_results = lisa(&weights, &values, 9999, false,PermutationMethod::LOOKUP).unwrap();
+        let lisa_results = lisa(&weights, &values, 9999, false, PermutationMethod::LOOKUP).unwrap();
         println!("{:#?}, {:#?}", lisa_results.moran_val, lisa_results.p_vals);
         let j = serde_json::to_string(&lisa_results).unwrap();
         let mut file = File::create("results_real.json").unwrap();

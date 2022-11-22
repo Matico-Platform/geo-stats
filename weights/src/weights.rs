@@ -177,25 +177,34 @@ impl Weights {
     pub fn to_list_with_geom<A: GeoFloat>(
         &self,
         geoms: &[Geometry<A>],
-    ) -> (Vec<usize>, Vec<usize>, Vec<f64>, Vec<Geometry<A>>) {
+    ) -> Result<(Vec<usize>, Vec<usize>, Vec<f64>, Vec<Geometry<A>>), String> {
         let mut origin_list: Vec<usize> = vec![];
         let mut dest_list: Vec<usize> = vec![];
         let mut weight_list: Vec<f64> = vec![];
         let mut geoms: Vec<Geometry<A>> = vec![];
+        let no_geoms = geoms.len();
 
         for (origin, dests) in self.weights.iter() {
             for (dest, weight) in dests.iter() {
                 origin_list.push(*origin);
                 dest_list.push(*dest);
                 weight_list.push(*weight);
-                let origin_centroid = geoms.get(*origin).unwrap().centroid().unwrap();
-                let dest_centroid = geoms.get(*dest).unwrap().centroid().unwrap();
+                let origin_centroid = geoms
+                    .get(*origin)
+                    .ok_or_else(|| format!("Failed to get origin {} {}", origin, no_geoms))?
+                    .centroid()
+                    .unwrap();
+                let dest_centroid = geoms
+                    .get(*dest)
+                    .ok_or_else(|| format!("Failed to get origin {} {}", dest, no_geoms))?
+                    .centroid()
+                    .unwrap();
                 let line: geo::Geometry<A> =
                     geo::Geometry::Line(Line::new(origin_centroid, dest_centroid));
                 geoms.push(line);
             }
         }
-        (origin_list, dest_list, weight_list, geoms)
+        Ok((origin_list, dest_list, weight_list, geoms))
     }
 
     /// Returns the weights matrix in a GeoJson format with lines between the origin and

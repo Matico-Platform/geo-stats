@@ -1,5 +1,6 @@
 use geo_weights::Weights;
 use std::collections::HashSet;
+
 #[test]
 fn we_should_correctly_construct_a_matrix_from_list_representation() {
     let origins: Vec<usize> = vec![1, 1, 3, 4, 5];
@@ -35,11 +36,11 @@ fn we_should_be_able_to_save_and_load_list_reps() {
 
     let weights: Vec<f64> = vec![1.0, 2.0, -1.0, 2.0, 1.0];
 
-    let weights = Weights::from_list_rep(origins, dests, weights, 5);
+    let weights = Weights::from_list_rep(&origins, &dests, &weights, 5);
 
     let (origins, dests, weight_vals) = weights.to_list();
 
-    let weights2 = Weights::from_list_rep(origins, dests, weight_vals, 5);
+    let weights2 = Weights::from_list_rep(&origins, &dests, &weight_vals, 5);
 
     assert_eq!(weights.weights(), weights2.weights());
 }
