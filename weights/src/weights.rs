@@ -181,7 +181,7 @@ impl Weights {
         let mut origin_list: Vec<usize> = vec![];
         let mut dest_list: Vec<usize> = vec![];
         let mut weight_list: Vec<f64> = vec![];
-        let mut geoms: Vec<Geometry<A>> = vec![];
+        let mut link_geoms: Vec<Geometry<A>> = vec![];
         let no_geoms = geoms.len();
 
         for (origin, dests) in self.weights.iter() {
@@ -201,10 +201,10 @@ impl Weights {
                     .unwrap();
                 let line: geo::Geometry<A> =
                     geo::Geometry::Line(Line::new(origin_centroid, dest_centroid));
-                geoms.push(line);
+                link_geoms.push(line);
             }
         }
-        Ok((origin_list, dest_list, weight_list, geoms))
+        Ok((origin_list, dest_list, weight_list, link_geoms))
     }
 
     /// Returns the weights matrix in a GeoJson format with lines between the origin and
